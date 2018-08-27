@@ -1,6 +1,20 @@
 require 'algorithms'
 include Containers
 
+
+class LinearCongruential
+  attr_reader :seed
+
+  def initialize(seed)
+    @seed = @r = seed
+  end
+
+  # range is 0 to 2147483647
+  def rand
+    @r = (1103515245 * @r + 12345) & 0x7fff_ffff
+  end
+end
+
 class Queue
 
   attr_reader :server_count, :size, :client_count
@@ -28,10 +42,6 @@ class Queue
 
 end
 
-def randon_number
-  rand
-end
-
 class Simulation
 
   def initialize(server_count, size)
@@ -52,8 +62,14 @@ class Simulation
 
 end
 
-puts Simulation.new(1, 3).to_s
-a = PriorityQueue.new {|x,y| (x <=> y) == -1}
-a.push "Matthias", 2
-a.push "Marina", 1
-puts a.pop
+
+if __FILE__ == $0
+  puts Simulation.new(1, 3).to_s
+  a = PriorityQueue.new {|x,y| (x <=> y) == -1}
+  a.push "Matthias", 2
+  a.push "Marina", 1
+  puts a.pop
+  lcg = LinearCongruential.new(1)
+  puts (1..5).map {lcg.rand}
+end
+
