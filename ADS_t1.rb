@@ -1,7 +1,6 @@
 require 'algorithms'
 include Containers
 
-
 class LinearCongruential
   attr_reader :seed
 
@@ -9,9 +8,9 @@ class LinearCongruential
     @seed = @r = seed
   end
 
-  # range is 0 to 2147483647
   def rand
-    @r = (1103515245 * @r + 12345) & 0x7fff_ffff
+    @r = (25173 * @r + 13849) % 32768
+    @r / 32768.to_f
   end
 end
 
@@ -47,6 +46,7 @@ class Simulation
   def initialize(server_count, size)
     @queue = Queue.new(server_count, size)
     @statistics = {}
+    @events = PriorityQueue.new {|x,y| (x <=> y) == -1}
     size.times { | i | @statistics[i] = 0 }
   end
 
@@ -57,10 +57,19 @@ class Simulation
   end
 
   def run
-
+    @time = Time.now
   end
 
+  def arrival
+  end
+
+  def departure
+  end
+
+  private :arrival, :departure
+
 end
+
 
 
 if __FILE__ == $0
@@ -70,6 +79,6 @@ if __FILE__ == $0
   a.push "Marina", 1
   puts a.pop
   lcg = LinearCongruential.new(1)
-  puts (1..5).map {lcg.rand}
+  puts (1..10).map {lcg.rand}
 end
 
