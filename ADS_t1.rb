@@ -12,6 +12,12 @@ class LinearCongruential
     @r = (25173 * @r + 13849) % 32768
     @r / 32768.to_f
   end
+
+  def rand_between(range)
+    first = range.first
+    last = range.last
+    (last - first) * rand + first
+  end
 end
 
 class Queue
