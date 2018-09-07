@@ -2,18 +2,6 @@ require 'yaml'
 
 
 
-class Event
-  attr_reader :type, :queue_id, :time
-
-  def initialize(type, queue_id, time)
-    @type = type
-    @queue_id = queue_id
-    @time = time
-  end
-end
-
-
-
 class LinearCongruential
   attr_reader :seed
 
@@ -70,6 +58,8 @@ end
 
 
 class Simulation
+
+  Event = Struct.new(:type, :queue_id, :time)
 
   def initialize(config_file_path)
     @queues = Hash.new
