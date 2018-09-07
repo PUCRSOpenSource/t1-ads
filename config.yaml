@@ -19,4 +19,5 @@
     :max_service: 16
 
 :topology:
-  :q1: :q2
+  - :from: :q1
+    :to: :q2

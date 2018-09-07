@@ -25,9 +25,10 @@ end
 
 class Queue
 
-  attr_reader :servers, :capacity, :client_count, :input, :output
+  attr_reader :id, :servers, :capacity, :client_count, :input, :output
 
   def initialize(config)
+    @id = config[:id]
     @servers = config[:servers]
     @capacity = config[:capacity]
     @input = config[:min_arrival]..config[:max_arrival]
@@ -44,12 +45,12 @@ class Queue
   end
 
   def to_s
-    "Queue\n" +
+    "Queue #{@id}\n" +
     "server_count: #{@server_count}\n" +
     "capacity: #{@capacity}\n" +
     "client_count: #{@client_count}\n" +
     "Input tax #{@input}\n" +
-    "Output tax #{@output}\n"
+    "Output tax #{@output}"
   end
 
 end
@@ -60,6 +61,7 @@ class Simulation
 
   def initialize(config_file_path)
     @queues = Hash.new
+    @topology = Hash.new
     setup(config_file_path)
   end
 
@@ -67,12 +69,14 @@ class Simulation
   end
 
   def to_s
-    @queues.each { |q| q.to_s }
+    @queues.each { |q| q.to_s }.to_s + "\n" +
+    @topology.to_s
   end
 
   def setup(config_file_path)
     config = YAML.load_file(config_file_path)
     config[:queues].each { |q| @queues[q[:id]] = Queue.new(q) }
+    config[:topology].each { |e| @topology[e[:from]] = @queues[e[:to]] }
   end
 
   def arrival
