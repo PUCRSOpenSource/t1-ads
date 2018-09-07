@@ -1,8 +1,8 @@
 :arrivals:
-  :f1: 2.5
+  - :f1: 2.5
 
 :queues:
-  :q1:
+  - :id: :q1
     :servers: 1
     :capacity: 3
     :min_arrival: 3
@@ -10,10 +10,13 @@
     :min_service: 9
     :max_service: 15
 
-  :q2:
+  - :id: :q2
     :servers: 2
     :capacity: 4
     :min_arrival: 4
     :max_arrival: 8
     :min_service: 10
     :max_service: 16
+
+:topology:
+  :q1: :q2

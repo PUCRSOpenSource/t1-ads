@@ -25,18 +25,18 @@ end
 
 class Queue
 
-  attr_reader :server_count, :size, :client_count, :input, :output
+  attr_reader :servers, :capacity, :client_count, :input, :output
 
-  def initialize(server_count, size, input, output)
-    @server_count = server_count
-    @size = size
-    @input = input
-    @output = output
+  def initialize(config)
+    @servers = config[:servers]
+    @capacity = config[:capacity]
+    @input = config[:min_arrival]..config[:max_arrival]
+    @output = config[:min_service]..config[:max_service]
     @client_count = 0
   end
 
   def increment
-    @client_count = client_count + 1 if @client_count < @size
+    @client_count = client_count + 1 if @client_count < @capacity
   end
 
   def decrement
@@ -46,7 +46,7 @@ class Queue
   def to_s
     "Queue\n" +
     "server_count: #{@server_count}\n" +
-    "size: #{@size}\n" +
+    "capacity: #{@capacity}\n" +
     "client_count: #{@client_count}\n" +
     "Input tax #{@input}\n" +
     "Output tax #{@output}\n"
@@ -59,6 +59,7 @@ end
 class Simulation
 
   def initialize(config_file_path)
+    @queues = Hash.new
     setup(config_file_path)
   end
 
@@ -66,12 +67,12 @@ class Simulation
   end
 
   def to_s
+    @queues.each { |q| q.to_s }
   end
 
   def setup(config_file_path)
     config = YAML.load_file(config_file_path)
-    queues = config[:queues]
-    arrivals = config[:arrivals]
+    config[:queues].each { |q| @queues[q[:id]] = Queue.new(q) }
   end
 
   def arrival
@@ -89,5 +90,6 @@ end
 if __FILE__ == $0
   sim = Simulation.new(ARGV[0])
   sim.run
+  puts sim.to_s
 end
 
