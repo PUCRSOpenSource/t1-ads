@@ -1,0 +1,19 @@
+:arrivals:
+  :f1: 2.5
+
+:queues:
+  :q1:
+    :servers: 1
+    :capacity: 3
+    :min_arrival: 3
+    :max_arrival: 7
+    :min_service: 9
+    :max_service: 15
+
+  :q2:
+    :servers: 2
+    :capacity: 4
+    :min_arrival: 4
+    :max_arrival: 8
+    :min_service: 10
+    :max_service: 16

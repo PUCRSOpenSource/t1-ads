@@ -1,5 +1,6 @@
-require 'algorithms'
-include Containers
+require 'yaml'
+
+
 
 class LinearCongruential
   attr_reader :seed
@@ -20,13 +21,17 @@ class LinearCongruential
   end
 end
 
+
+
 class Queue
 
-  attr_reader :server_count, :size, :client_count
+  attr_reader :server_count, :size, :client_count, :input, :output
 
-  def initialize(server_count, size)
+  def initialize(server_count, size, input, output)
     @server_count = server_count
     @size = size
+    @input = input
+    @output = output
     @client_count = 0
   end
 
@@ -42,28 +47,31 @@ class Queue
     "Queue\n" +
     "server_count: #{@server_count}\n" +
     "size: #{@size}\n" +
-    "client_count: #{@client_count}"
+    "client_count: #{@client_count}\n" +
+    "Input tax #{@input}\n" +
+    "Output tax #{@output}\n"
   end
 
 end
 
+
+
 class Simulation
 
-  def initialize(server_count, size)
-    @queue = Queue.new(server_count, size)
-    @statistics = {}
-    @events = PriorityQueue.new {|x,y| (x <=> y) == -1}
-    size.times { | i | @statistics[i] = 0 }
-  end
-
-  def to_s
-    @queue.to_s +
-    "\n" +
-    @statistics.to_s
+  def initialize(config_file_path)
+    setup(config_file_path)
   end
 
   def run
-    @time = Time.now
+  end
+
+  def to_s
+  end
+
+  def setup(config_file_path)
+    config = YAML.load_file(config_file_path)
+    queues = config[:queues]
+    arrivals = config[:arrivals]
   end
 
   def arrival
@@ -72,19 +80,14 @@ class Simulation
   def departure
   end
 
-  private :arrival, :departure
+  private :arrival, :departure, :setup
 
 end
 
 
 
 if __FILE__ == $0
-  puts Simulation.new(1, 3).to_s
-  a = PriorityQueue.new {|x,y| (x <=> y) == -1}
-  a.push "Matthias", 2
-  a.push "Marina", 1
-  puts a.pop
-  lcg = LinearCongruential.new(1)
-  puts (1..10).map {lcg.rand}
+  sim = Simulation.new(ARGV[0])
+  sim.run
 end
 
