@@ -1,5 +1,6 @@
 :arrivals:
-  - :f1: 2.5
+  - :queue_id: :q1
+    :time: 2.5
 
 :queues:
   - :id: :q1

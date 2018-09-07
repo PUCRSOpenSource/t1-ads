@@ -2,6 +2,18 @@ require 'yaml'
 
 
 
+class Event
+  attr_reader :type, :queue_id, :time
+
+  def initialize(type, queue_id, time)
+    @type = type
+    @queue_id = queue_id
+    @time = time
+  end
+end
+
+
+
 class LinearCongruential
   attr_reader :seed
 
@@ -62,6 +74,7 @@ class Simulation
   def initialize(config_file_path)
     @queues = Hash.new
     @topology = Hash.new
+    @events = Array.new
     setup(config_file_path)
   end
 
@@ -70,13 +83,21 @@ class Simulation
 
   def to_s
     @queues.each { |q| q.to_s }.to_s + "\n" +
-    @topology.to_s
+    @topology.to_s + "\n" +
+    @events.to_s
   end
 
   def setup(config_file_path)
     config = YAML.load_file(config_file_path)
     config[:queues].each { |q| @queues[q[:id]] = Queue.new(q) }
     config[:topology].each { |e| @topology[e[:from]] = @queues[e[:to]] }
+    config[:arrivals].each do |e|
+      type = :arrival
+      queue_id = e[:queue_id]
+      time = e[:time]
+      event = Event.new(type, queue_id, time)
+      @events << event
+    end
   end
 
   def arrival
