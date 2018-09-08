@@ -71,6 +71,24 @@ class Simulation
   def run
   end
 
+  def insere_evento(tipo, id_fila, tempo)
+    event = Event.new(tipo, id_fila, tempo)
+    @events << event
+  end
+
+  def proximo_evento
+    pos_proximo_evento = 0
+    menor_tempo = Float::MAX
+    @events.each_with_index do |evento, index|
+      if menor_tempo > evento.time
+        menor_tempo = evento.time
+        pos_proximo_evento = index
+      end
+    end
+    @events.slice!(pos_proximo_evento)
+  end
+
+
   def to_s
     @queues.each { |q| q.to_s }.to_s + "\n" +
     @topology.to_s + "\n" +
