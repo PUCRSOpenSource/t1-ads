@@ -1,6 +1,8 @@
 :arrivals:
   - :queue_id: :q1
     :time: 2.5
+  - :queue_id: :q2
+    :time: 3.0
 
 :queues:
   - :id: :q1
@@ -10,6 +12,13 @@
     :max_arrival: 7
     :min_service: 9
     :max_service: 15
+  - :id: :q2
+    :servers: 2
+    :capacity: 4
+    :min_arrival: 4
+    :max_arrival: 8
+    :min_service: 10
+    :max_service: 16
 
 :seed: 10
 
