@@ -87,6 +87,8 @@ class Simulation
         arrival(evento.queue_id, evento.time)
       when :departure
         departure(evento.queue_id, evento.time)
+      when :passagem
+        passagem(evento.queue_id, evento.time)
       end
       @previous_event_time = evento.time
     end
@@ -162,6 +164,15 @@ class Simulation
   end
 
   def passagem(id_fila, tempo)
+    de = @queues[id_fila]
+    para = @topology[id_fila]
+    contabiliza_tempo(tempo)
+    de.decrement
+    agenda(:passagem, de, tempo) if de.client_count >= de.servers
+    if para.client_count < para.capacity
+      para.increment
+      agenda(:departure, para, tempo) if para.client_count <= para.servers
+    end
   end
 
   def departure(id_fila, tempo)
@@ -182,7 +193,7 @@ class Simulation
   end
 
   def agenda(tipo, fila, tempo)
-    if tipo == :departure
+    if tipo == :departure or tipo == :passagem
       tipo = :passagem unless @topology[fila.id].nil?
       taxa = fila.output
     else

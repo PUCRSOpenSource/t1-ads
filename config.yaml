@@ -20,6 +20,10 @@
     :min_service: 10
     :max_service: 16
 
+:topology:
+  - :from: :q1
+    :to: :q2
+
 :seed: 10
 
 :duration: 300
