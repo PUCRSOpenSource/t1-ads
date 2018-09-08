@@ -70,6 +70,7 @@ class Simulation
     @topology = Hash.new
     @events = Array.new
     @statistics = Hash.new
+    @event_report = Array.new
     @random = nil
     @duracao = 0
     @previous_event_time = 0
@@ -80,7 +81,7 @@ class Simulation
     while true
       evento = proximo_evento
       break if evento.time > @duracao
-      puts "#{evento.type} #{evento.time}"
+      @event_report << "#{evento.queue_id} #{evento.type} #{evento.time}"
       case evento.type
       when :arrival
         arrival(evento.queue_id, evento.time)
@@ -115,6 +116,24 @@ class Simulation
     @events.to_s
   end
 
+  def report
+    puts "--------------------------------------"
+    puts "|       RELATÓRIO DE SIMULAÇÃO       |"
+    puts "--------------------------------------"
+    @event_report.each_with_index do |er, index|
+      puts "#{index} - #{er}"
+    end
+    puts "--------------------------------------"
+    @queues.each do |id, fila|
+      report_fila = "Fila #{id}:\n"
+      fila.statistics.each do |estado, tempo|
+        report_fila += "\t#{estado} -> #{tempo}\n\t     #{tempo*100/@previous_event_time}%\n"
+      end
+      puts report_fila
+    end
+    puts "--------------------------------------"
+  end
+
   def setup(config_file_path)
     config = YAML.load_file(config_file_path)
     @duracao = config[:duration]
@@ -143,9 +162,7 @@ class Simulation
   end
 
   def passagem(id_fila, tempo)
-
   end
-
 
   def departure(id_fila, tempo)
     contabiliza_tempo(tempo)
@@ -171,13 +188,11 @@ class Simulation
     else
       taxa = fila.input
     end
-    tempo = tempo + ((taxa.last - taxa.first) * @random.rand_between(taxa) + taxa.first)
+    tempo = tempo + @random.rand_between(taxa)
     insere_evento(tipo, fila.id, tempo)
   end
 
-
-
-  private :arrival, :departure, :setup
+  private :arrival, :departure, :passagem, :setup, :contabiliza_tempo, :agenda, :insere_evento, :proximo_evento
 
 end
 
@@ -186,6 +201,6 @@ end
 if __FILE__ == $0
   sim = Simulation.new(ARGV[0])
   sim.run
-  puts sim.to_s
+  sim.report
 end
 
