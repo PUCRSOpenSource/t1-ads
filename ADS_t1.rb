@@ -25,7 +25,7 @@ end
 
 class Queue
 
-  attr_reader :id, :servers, :capacity, :client_count, :input, :output, :statistics
+  attr_reader :id, :servers, :capacity, :client_count, :input, :output, :statistics, :client_lost_count
 
   def initialize(config)
     @id = config[:id]
@@ -34,6 +34,7 @@ class Queue
     @input = config[:min_arrival]..config[:max_arrival]
     @output = config[:min_service]..config[:max_service]
     @client_count = 0
+    @client_lost_count = 0
     @statistics = Hash.new
     capacity.times { |i| @statistics[i] = 0 }
     @statistics[capacity] = 0
@@ -47,6 +48,10 @@ class Queue
     @client_count = client_count - 1 if @client_count > 0
   end
 
+  def increment_lost_count
+    @client_lost_count += 1
+  end
+
   def to_s
     "Queue #{@id}\n" +
     "server_count: #{@server_count}\n" +
@@ -54,6 +59,7 @@ class Queue
     "client_count: #{@client_count}\n" +
     "Input tax #{@input}\n" +
     "Output tax #{@output}\n" +
+    "Client Lost #{@client_lost_count}\n" +
     "Statistics #{@statistics.to_s}"
   end
 
@@ -131,6 +137,7 @@ class Simulation
       fila.statistics.each do |estado, tempo|
         report_fila += "\t#{estado} -> #{tempo}\n\t     #{tempo*100/@previous_event_time}%\n"
       end
+      report_fila += "\n\tNúmero de clientes perdidos: #{fila.client_lost_count}"
       puts report_fila
     end
     puts "--------------------------------------"
@@ -157,10 +164,12 @@ class Simulation
     if fila.client_count < fila.capacity
       fila.increment
       if fila.client_count <= fila.servers
-       agenda(:departure, fila, tempo)
+        agenda(:departure, fila, tempo)
       end
+    else
+      fila.increment_lost_count
     end
-   agenda(:arrival, fila, tempo)
+    agenda(:arrival, fila, tempo)
   end
 
   def passagem(id_fila, tempo)
@@ -172,6 +181,8 @@ class Simulation
     if para.client_count < para.capacity
       para.increment
       agenda(:departure, para, tempo) if para.client_count <= para.servers
+    else
+      para.increment_lost_count
     end
   end
 
