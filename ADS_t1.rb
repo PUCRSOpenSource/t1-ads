@@ -25,7 +25,7 @@ end
 
 class Queue
 
-  attr_reader :id, :servers, :capacity, :client_count, :input, :output
+  attr_reader :id, :servers, :capacity, :client_count, :input, :output, :statistics
 
   def initialize(config)
     @id = config[:id]
@@ -34,6 +34,9 @@ class Queue
     @input = config[:min_arrival]..config[:max_arrival]
     @output = config[:min_service]..config[:max_service]
     @client_count = 0
+    @statistics = Hash.new
+    capacity.times { |i| @statistics[i] = 0 }
+    @statistics[capacity] = 0
   end
 
   def increment
@@ -50,7 +53,8 @@ class Queue
     "capacity: #{@capacity}\n" +
     "client_count: #{@client_count}\n" +
     "Input tax #{@input}\n" +
-    "Output tax #{@output}"
+    "Output tax #{@output}\n" +
+    "Statistics #{@statistics.to_s}"
   end
 
 end
@@ -65,10 +69,23 @@ class Simulation
     @queues = Hash.new
     @topology = Hash.new
     @events = Array.new
+    @statistics = Hash.new
+    @random = nil
+    @duracao = 0
     setup(config_file_path)
   end
 
   def run
+    while true
+      evento = proximo_evento
+      break if evento.time > @duracao
+      case evento.type
+      when :arrival
+        arrival(evento.queue_id, evento.time)
+      when :departure
+        departure(evento.queue_id, evento.time)
+      end
+    end
   end
 
   def insere_evento(tipo, id_fila, tempo)
@@ -97,8 +114,9 @@ class Simulation
 
   def setup(config_file_path)
     config = YAML.load_file(config_file_path)
+    @duracao = config[:duration]
     config[:queues].each { |q| @queues[q[:id]] = Queue.new(q) }
-    config[:topology].each { |e| @topology[e[:from]] = @queues[e[:to]] }
+    config[:topology].each { |e| @topology[e[:from]] = @queues[e[:to]] } unless config[:topology].nil?
     config[:arrivals].each do |e|
       type = :arrival
       queue_id = e[:queue_id]
@@ -106,13 +124,52 @@ class Simulation
       event = Event.new(type, queue_id, time)
       @events << event
     end
+    @random = LinearCongruential.new(config[:seed])
   end
 
-  def arrival
+  def arrival(id_fila, tempo)
+    contabiliza_tempo(tempo)  #outro def
+    fila = @queues[id_fila]
+    if fila.client_count < fila.capacity
+      fila.increment
+      if fila.client_count < fila.servers
+       agenda(:departure, fila)
+      end
+    end
+   agenda(:arrival, fila)
   end
 
-  def departure
+  def passagem(id_fila, tempo)
+
   end
+
+
+  def departure(id_fila, tempo)
+    contabiliza_tempo(tempo)
+    fila = @queues[id_fila]
+    fila.decrement
+    agenda(:departure, fila) if fila.client_count >= fila.servers
+  end
+
+
+  def contabiliza_tempo(tempo)
+    @queues.each do |fila_id, fila|
+      fila.statistics[fila.client_count] += tempo
+    end
+  end
+
+  def agenda(tipo, fila)
+    if tipo == :departure
+      tipo = :passagem unless @topology[fila.id].nil?
+      taxa = fila.output
+    else
+      taxa = fila.input
+    end
+    tempo = (taxa.last - taxa.first) * @random.rand_between(taxa) + taxa.first
+    @events << Event.new(tipo, fila.id, tempo)
+  end
+
+
 
   private :arrival, :departure, :setup
 

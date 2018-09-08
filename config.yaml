@@ -11,14 +11,6 @@
     :min_service: 9
     :max_service: 15
 
-  - :id: :q2
-    :servers: 2
-    :capacity: 4
-    :min_arrival: 4
-    :max_arrival: 8
-    :min_service: 10
-    :max_service: 16
+:seed: 10
 
-:topology:
-  - :from: :q1
-    :to: :q2
+:duration: 30
