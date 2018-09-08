@@ -72,6 +72,7 @@ class Simulation
     @statistics = Hash.new
     @random = nil
     @duracao = 0
+    @previous_event_time = 0
     setup(config_file_path)
   end
 
@@ -79,12 +80,14 @@ class Simulation
     while true
       evento = proximo_evento
       break if evento.time > @duracao
+      puts "#{evento.type} #{evento.time}"
       case evento.type
       when :arrival
         arrival(evento.queue_id, evento.time)
       when :departure
         departure(evento.queue_id, evento.time)
       end
+      @previous_event_time = evento.time
     end
   end
 
@@ -128,15 +131,15 @@ class Simulation
   end
 
   def arrival(id_fila, tempo)
-    contabiliza_tempo(tempo)  #outro def
+    contabiliza_tempo(tempo)
     fila = @queues[id_fila]
     if fila.client_count < fila.capacity
       fila.increment
-      if fila.client_count < fila.servers
-       agenda(:departure, fila)
+      if fila.client_count <= fila.servers
+       agenda(:departure, fila, tempo)
       end
     end
-   agenda(:arrival, fila)
+   agenda(:arrival, fila, tempo)
   end
 
   def passagem(id_fila, tempo)
@@ -148,25 +151,28 @@ class Simulation
     contabiliza_tempo(tempo)
     fila = @queues[id_fila]
     fila.decrement
-    agenda(:departure, fila) if fila.client_count >= fila.servers
+    agenda(:departure, fila, tempo) if fila.client_count >= fila.servers
   end
 
 
   def contabiliza_tempo(tempo)
     @queues.each do |fila_id, fila|
-      fila.statistics[fila.client_count] += tempo
+      current_time = fila.statistics[fila.client_count]
+      interval = tempo - @previous_event_time
+      new_time = current_time + interval
+      fila.statistics[fila.client_count] = new_time
     end
   end
 
-  def agenda(tipo, fila)
+  def agenda(tipo, fila, tempo)
     if tipo == :departure
       tipo = :passagem unless @topology[fila.id].nil?
       taxa = fila.output
     else
       taxa = fila.input
     end
-    tempo = (taxa.last - taxa.first) * @random.rand_between(taxa) + taxa.first
-    @events << Event.new(tipo, fila.id, tempo)
+    tempo = tempo + ((taxa.last - taxa.first) * @random.rand_between(taxa) + taxa.first)
+    insere_evento(tipo, fila.id, tempo)
   end
 
 
