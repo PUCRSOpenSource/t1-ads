@@ -132,6 +132,7 @@ class Simulation
       puts "#{index} - #{er}"
     end
     puts "--------------------------------------"
+    puts "Semente utilizada: #{@random.seed}"
     @queues.each do |id, fila|
       report_fila = "Fila #{id}:\n"
       fila.statistics.each do |estado, tempo|
