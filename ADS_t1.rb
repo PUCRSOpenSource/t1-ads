@@ -78,43 +78,43 @@ class Simulation
     @statistics = Hash.new
     @event_report = Array.new
     @random = nil
-    @duracao = 0
+    @duration = 0
     @previous_event_time = 0
     setup(config_file_path)
   end
 
   def run
     while true
-      evento = proximo_evento
-      break if evento.time > @duracao
-      @event_report << "#{evento.queue_id} #{evento.type} #{evento.time}"
-      case evento.type
+      event = next_event
+      break if event.time > @duration
+      @event_report << "#{event.queue_id} #{event.type} #{event.time}"
+      case event.type
       when :arrival
-        arrival(evento.queue_id, evento.time)
+        arrival(event.queue_id, event.time)
       when :departure
-        departure(evento.queue_id, evento.time)
-      when :passagem
-        passagem(evento.queue_id, evento.time)
+        departure(event.queue_id, event.time)
+      when :transfer
+        transfer(event.queue_id, event.time)
       end
-      @previous_event_time = evento.time
+      @previous_event_time = event.time
     end
   end
 
-  def insere_evento(tipo, id_fila, tempo)
-    event = Event.new(tipo, id_fila, tempo)
+  def insert_event(event_type, queue_id, time)
+    event = Event.new(event_type, queue_id, time)
     @events << event
   end
 
-  def proximo_evento
-    pos_proximo_evento = 0
-    menor_tempo = Float::MAX
-    @events.each_with_index do |evento, index|
-      if menor_tempo > evento.time
-        menor_tempo = evento.time
-        pos_proximo_evento = index
+  def next_event
+    next_event_index = 0
+    min_time = Float::MAX
+    @events.each_with_index do |event, i|
+      if min_time > event.time
+        min_time = event.time
+        next_event_index = i
       end
     end
-    @events.slice!(pos_proximo_evento)
+    @events.slice!(next_event_index)
   end
 
 
@@ -126,27 +126,27 @@ class Simulation
 
   def report
     puts "--------------------------------------"
-    puts "|       RELATÓRIO DE SIMULAÇÃO       |"
+    puts "|         SIMULATION REPORT          |"
     puts "--------------------------------------"
-    @event_report.each_with_index do |er, index|
-      puts "#{index} - #{er}"
+    @event_report.each_with_index do |er, i|
+      puts "#{i} - #{er}"
     end
     puts "--------------------------------------"
-    puts "Semente utilizada: #{@random.seed}"
-    @queues.each do |id, fila|
-      report_fila = "Fila #{id}:\n"
-      fila.statistics.each do |estado, tempo|
-        report_fila += "\t#{estado} -> #{tempo}\n\t     #{tempo*100/@previous_event_time}%\n"
+    puts "Seed: #{@random.seed}"
+    @queues.each do |id, queue|
+      queue_report = "Queue #{id}:\n"
+      queue.statistics.each do |state, time|
+        queue_report += "\t#{state} -> #{time}\n\t     #{time * 100 / @previous_event_time}%\n"
       end
-      report_fila += "\n\tNúmero de clientes perdidos: #{fila.client_lost_count}"
-      puts report_fila
+      queue_report += "\n\tClients lost: #{queue.client_lost_count}"
+      puts queue_report
     end
     puts "--------------------------------------"
   end
 
   def setup(config_file_path)
     config = YAML.load_file(config_file_path)
-    @duracao = config[:duration]
+    @duration = config[:duration]
     config[:queues].each { |q| @queues[q[:id]] = Queue.new(q) }
     config[:topology].each { |e| @topology[e[:from]] = @queues[e[:to]] } unless config[:topology].nil?
     config[:arrivals].each do |e|
@@ -159,63 +159,63 @@ class Simulation
     @random = LinearCongruential.new(config[:seed])
   end
 
-  def arrival(id_fila, tempo)
-    contabiliza_tempo(tempo)
-    fila = @queues[id_fila]
-    if fila.client_count < fila.capacity
-      fila.increment
-      if fila.client_count <= fila.servers
-        agenda(:departure, fila, tempo)
+  def arrival(queue_id, time)
+    record_time(time)
+    queue = @queues[queue_id]
+    if queue.client_count < queue.capacity
+      queue.increment
+      if queue.client_count <= queue.servers
+        schedule(:departure, queue, time)
       end
     else
-      fila.increment_lost_count
+      queue.increment_lost_count
     end
-    agenda(:arrival, fila, tempo)
+    schedule(:arrival, queue, time)
   end
 
-  def passagem(id_fila, tempo)
-    de = @queues[id_fila]
-    para = @topology[id_fila]
-    contabiliza_tempo(tempo)
-    de.decrement
-    agenda(:passagem, de, tempo) if de.client_count >= de.servers
-    if para.client_count < para.capacity
-      para.increment
-      agenda(:departure, para, tempo) if para.client_count <= para.servers
+  def transfer(queue_id, time)
+    from = @queues[queue_id]
+    to = @topology[queue_id]
+    record_time(time)
+    from.decrement
+    schedule(:transfer, from, time) if from.client_count >= from.servers
+    if to.client_count < to.capacity
+      to.increment
+      schedule(:departure, to, time) if to.client_count <= to.servers
     else
-      para.increment_lost_count
+      to.increment_lost_count
     end
   end
 
-  def departure(id_fila, tempo)
-    contabiliza_tempo(tempo)
-    fila = @queues[id_fila]
-    fila.decrement
-    agenda(:departure, fila, tempo) if fila.client_count >= fila.servers
+  def departure(queue_id, time)
+    record_time(time)
+    queue = @queues[queue_id]
+    queue.decrement
+    schedule(:departure, queue, time) if queue.client_count >= queue.servers
   end
 
 
-  def contabiliza_tempo(tempo)
-    @queues.each do |fila_id, fila|
-      current_time = fila.statistics[fila.client_count]
-      interval = tempo - @previous_event_time
+  def record_time(time)
+    @queues.each do |fila_id, queue|
+      current_time = queue.statistics[queue.client_count]
+      interval = time - @previous_event_time
       new_time = current_time + interval
-      fila.statistics[fila.client_count] = new_time
+      queue.statistics[queue.client_count] = new_time
     end
   end
 
-  def agenda(tipo, fila, tempo)
-    if tipo == :departure or tipo == :passagem
-      tipo = :passagem unless @topology[fila.id].nil?
-      taxa = fila.output
+  def schedule(event_type, queue, time)
+    if event_type == :departure or event_type == :transfer
+      event_type = :transfer unless @topology[queue.id].nil?
+      taxa = queue.output
     else
-      taxa = fila.input
+      taxa = queue.input
     end
-    tempo = tempo + @random.rand_between(taxa)
-    insere_evento(tipo, fila.id, tempo)
+    time = time + @random.rand_between(taxa)
+    insert_event(event_type, queue.id, time)
   end
 
-  private :arrival, :departure, :passagem, :setup, :contabiliza_tempo, :agenda, :insere_evento, :proximo_evento
+  private :arrival, :departure, :transfer, :setup, :record_time, :schedule, :insert_event, :next_event
 
 end
 
