@@ -19,6 +19,9 @@ class LinearCongruential
     last = range.last
     (last - first) * rand + first
   end
+
+  private :rand
+
 end
 
 
