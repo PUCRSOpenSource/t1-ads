@@ -1,8 +1,6 @@
 #! /usr/bin/env ruby
 
-require 'yaml'
-
-
+require "yaml"
 
 class LinearCongruential
   attr_reader :seed
@@ -11,26 +9,28 @@ class LinearCongruential
     @seed = @r = seed
   end
 
-  def rand
-    @r = (25173 * @r + 13849) % 32768
-    @r / 32768.to_f
-  end
-
   def rand_between(range)
     first = range.first
     last = range.last
     (last - first) * rand + first
   end
 
-  private :rand
+  private
 
+  def rand
+    @r = (25173 * @r + 13849) % 32768
+    @r / 32768.to_f
+  end
 end
 
-
-
 class Queue
-
-  attr_reader :id, :servers, :capacity, :client_count, :input, :output, :statistics, :client_lost_count
+  attr_reader :capacity,
+              :client_count,
+              :client_lost_count,
+              :id,
+              :input, :output,
+              :servers,
+              :statistics
 
   def initialize(config)
     @id = config[:id]
@@ -67,13 +67,9 @@ class Queue
     "Client Lost #{@client_lost_count}\n" +
     "Statistics #{@statistics.to_s}"
   end
-
 end
 
-
-
 class Simulation
-
   Event = Struct.new(:type, :queue_id, :time)
 
   def initialize(config_file_path)
@@ -105,6 +101,36 @@ class Simulation
     end
   end
 
+  def report
+    puts "--------------------------------------"
+    puts "|         SIMULATION REPORT          |"
+    puts "--------------------------------------"
+    @event_report.each_with_index do |er, i|
+      puts "#{i} - #{er}"
+    end
+    puts "--------------------------------------"
+    puts "Seed: #{@random.seed}"
+    @queues.each do |id, queue|
+      queue_report = "Queue #{id}:\n"
+      queue.statistics.each do |state, time|
+        queue_report += "\t#{state} -> #{time}\n\t"
+        queue_report += "     "
+        queue_report += "#{time * 100 / @previous_event_time}%\n"
+      end
+      queue_report += "\n\tClients lost: #{queue.client_lost_count}"
+      puts queue_report
+    end
+    puts "--------------------------------------"
+  end
+
+  def to_s
+    @queues.each { |q| q.to_s }.to_s + "\n" +
+    @topology.to_s + "\n" +
+    @events.to_s
+  end
+
+  private
+
   def insert_event(event_type, queue_id, time)
     event = Event.new(event_type, queue_id, time)
     @events << event
@@ -122,38 +148,13 @@ class Simulation
     @events.slice!(next_event_index)
   end
 
-
-  def to_s
-    @queues.each { |q| q.to_s }.to_s + "\n" +
-    @topology.to_s + "\n" +
-    @events.to_s
-  end
-
-  def report
-    puts "--------------------------------------"
-    puts "|         SIMULATION REPORT          |"
-    puts "--------------------------------------"
-    @event_report.each_with_index do |er, i|
-      puts "#{i} - #{er}"
-    end
-    puts "--------------------------------------"
-    puts "Seed: #{@random.seed}"
-    @queues.each do |id, queue|
-      queue_report = "Queue #{id}:\n"
-      queue.statistics.each do |state, time|
-        queue_report += "\t#{state} -> #{time}\n\t     #{time * 100 / @previous_event_time}%\n"
-      end
-      queue_report += "\n\tClients lost: #{queue.client_lost_count}"
-      puts queue_report
-    end
-    puts "--------------------------------------"
-  end
-
   def setup(config_file_path)
     config = symbolize_config_keys(YAML.load_file(config_file_path))
     @duration = config[:duration]
     config[:queues].each { |q| @queues[q[:id]] = Queue.new(q) }
-    config[:topology].each { |e| @topology[e[:from]] = @queues[e[:to]] } unless config[:topology].nil?
+    unless config[:topology].nil?
+      config[:topology].each { |e| @topology[e[:from]] = @queues[e[:to]] }
+    end
     config[:arrivals].each do |e|
       type = :arrival
       queue_id = e[:queue_id]
@@ -199,7 +200,6 @@ class Simulation
     schedule(:departure, queue, time) if queue.client_count >= queue.servers
   end
 
-
   def record_time(time)
     @queues.each do |fila_id, queue|
       current_time = queue.statistics[queue.client_count]
@@ -227,12 +227,7 @@ class Simulation
     config[:topology].map! { |hash| hash.transform_keys(&:to_sym) }
     config
   end
-
-  private :arrival, :departure, :transfer, :setup, :record_time, :schedule, :insert_event, :next_event, :symbolize_config_keys
-
 end
-
-
 
 if __FILE__ == $0
   sim = Simulation.new(ARGV[0])
