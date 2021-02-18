@@ -150,7 +150,7 @@ class Simulation
   end
 
   def setup(config_file_path)
-    config = YAML.load_file(config_file_path)
+    config = symbolize_config_keys(YAML.load_file(config_file_path))
     @duration = config[:duration]
     config[:queues].each { |q| @queues[q[:id]] = Queue.new(q) }
     config[:topology].each { |e| @topology[e[:from]] = @queues[e[:to]] } unless config[:topology].nil?
@@ -220,7 +220,15 @@ class Simulation
     insert_event(event_type, queue.id, time)
   end
 
-  private :arrival, :departure, :transfer, :setup, :record_time, :schedule, :insert_event, :next_event
+  def symbolize_config_keys(config)
+    config = config.transform_keys(&:to_sym)
+    config[:arrivals].map! { |hash| hash.transform_keys(&:to_sym) }
+    config[:queues].map! { |hash| hash.transform_keys(&:to_sym) }
+    config[:topology].map! { |hash| hash.transform_keys(&:to_sym) }
+    config
+  end
+
+  private :arrival, :departure, :transfer, :setup, :record_time, :schedule, :insert_event, :next_event, :symbolize_config_keys
 
 end
 
