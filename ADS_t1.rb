@@ -1,7 +1,10 @@
 #! /usr/bin/env ruby
 
-require "yaml"
+# frozen_string_literal: true
 
+require 'yaml'
+
+# LinearCongruential
 class LinearCongruential
   attr_reader :seed
 
@@ -18,11 +21,12 @@ class LinearCongruential
   private
 
   def rand
-    @r = (25173 * @r + 13849) % 32768
-    @r / 32768.to_f
+    @r = (25_173 * @r + 13_849) % 32_768
+    @r / 32_768.to_f
   end
 end
 
+# Queue
 class Queue
   attr_reader :capacity,
               :client_count,
@@ -40,7 +44,7 @@ class Queue
     @output = config[:min_service]..config[:max_service]
     @client_count = 0
     @client_lost_count = 0
-    @statistics = Hash.new
+    @statistics = {}
     capacity.times { |i| @statistics[i] = 0 }
     @statistics[capacity] = 0
   end
@@ -50,7 +54,7 @@ class Queue
   end
 
   def decrement
-    @client_count = client_count - 1 if @client_count > 0
+    @client_count = client_count - 1 if @client_count.positive?
   end
 
   def increment_lost_count
@@ -58,26 +62,27 @@ class Queue
   end
 
   def to_s
-    "Queue #{@id}\n" +
-    "server_count: #{@server_count}\n" +
-    "capacity: #{@capacity}\n" +
-    "client_count: #{@client_count}\n" +
-    "Input tax #{@input}\n" +
-    "Output tax #{@output}\n" +
-    "Client Lost #{@client_lost_count}\n" +
-    "Statistics #{@statistics.to_s}"
+    "Queue #{@id}\
+      server_count: #{@server_count}\
+      capacity: #{@capacity}\
+      client_count: #{@client_count}\
+      Input tax #{@input}\
+      Output tax #{@output}\
+      Client Lost #{@client_lost_count}\
+      Statistics #{@statistics}"
   end
 end
 
+# Simulation
 class Simulation
   Event = Struct.new(:type, :queue_id, :time)
 
   def initialize(config_file_path)
-    @queues = Hash.new
-    @topology = Hash.new
-    @events = Array.new
-    @statistics = Hash.new
-    @event_report = Array.new
+    @queues = {}
+    @topology = {}
+    @events = []
+    @statistics = {}
+    @event_report = []
     @random = nil
     @duration = 0
     @previous_event_time = 0
@@ -85,7 +90,7 @@ class Simulation
   end
 
   def run
-    while true
+    loop do
       event = next_event
       break if event.time > @duration
       @event_report << "#{event.queue_id} #{event.type} #{event.time}"
@@ -102,31 +107,29 @@ class Simulation
   end
 
   def report
-    puts "--------------------------------------"
-    puts "|         SIMULATION REPORT          |"
-    puts "--------------------------------------"
+    puts '--------------------------------------'
+    puts '|         SIMULATION REPORT          |'
+    puts '--------------------------------------'
     @event_report.each_with_index do |er, i|
       puts "#{i} - #{er}"
     end
-    puts "--------------------------------------"
+    puts '--------------------------------------'
     puts "Seed: #{@random.seed}"
     @queues.each do |id, queue|
       queue_report = "Queue #{id}:\n"
       queue.statistics.each do |state, time|
         queue_report += "\t#{state} -> #{time}\n\t"
-        queue_report += "     "
+        queue_report += '     '
         queue_report += "#{time * 100 / @previous_event_time}%\n"
       end
       queue_report += "\n\tClients lost: #{queue.client_lost_count}"
       puts queue_report
     end
-    puts "--------------------------------------"
+    puts '--------------------------------------'
   end
 
   def to_s
-    @queues.each { |q| q.to_s }.to_s + "\n" +
-    @topology.to_s + "\n" +
-    @events.to_s
+    "#{@queues.each(&:to_s)}\n#{@topology}\n#{@events}"
   end
 
   private
@@ -152,9 +155,7 @@ class Simulation
     config = symbolize_config_keys(YAML.load_file(config_file_path))
     @duration = config[:duration]
     config[:queues].each { |q| @queues[q[:id]] = Queue.new(q) }
-    unless config[:topology].nil?
-      config[:topology].each { |e| @topology[e[:from]] = @queues[e[:to]] }
-    end
+    config[:topology]&.each { |e| @topology[e[:from]] = @queues[e[:to]] }
     config[:arrivals].each do |e|
       type = :arrival
       queue_id = e[:queue_id]
@@ -170,9 +171,7 @@ class Simulation
     queue = @queues[queue_id]
     if queue.client_count < queue.capacity
       queue.increment
-      if queue.client_count <= queue.servers
-        schedule(:departure, queue, time)
-      end
+      schedule(:departure, queue, time) if queue.client_count <= queue.servers
     else
       queue.increment_lost_count
     end
@@ -201,7 +200,7 @@ class Simulation
   end
 
   def record_time(time)
-    @queues.each do |fila_id, queue|
+    @queues.each_value do |queue|
       current_time = queue.statistics[queue.client_count]
       interval = time - @previous_event_time
       new_time = current_time + interval
@@ -210,13 +209,13 @@ class Simulation
   end
 
   def schedule(event_type, queue, time)
-    if event_type == :departure or event_type == :transfer
+    if %i[departure transfer].include? event_type
       event_type = :transfer unless @topology[queue.id].nil?
       taxa = queue.output
     else
       taxa = queue.input
     end
-    time = time + @random.rand_between(taxa)
+    time += + @random.rand_between(taxa)
     insert_event(event_type, queue.id, time)
   end
 
@@ -229,9 +228,8 @@ class Simulation
   end
 end
 
-if __FILE__ == $0
+if __FILE__ == $PROGRAM_NAME
   sim = Simulation.new(ARGV[0])
   sim.run
   sim.report
 end
-
